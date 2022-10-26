@@ -1,0 +1,221 @@
+
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(lubridate)
+library(skimr)
+library(ggplot2)
+library(tidymodels)
+```
+
+```{r}
+# Leitura dos dados
+dados_covid <- read_csv2("dataframe/dadosabertos_unicode.csv")
+```
+
+#PREPARAÇÃO DOS DADOS
+```{r}
+# Melhorando os nomes das colunas
+dados_covid_clean <- janitor::clean_names(dados_covid)
+```
+
+```{r}
+# Visualizando as primeiras linhas do dataframe
+head(dados_covid_clean)
+```
+
+```{r}
+# Visualizando as ultimas linhas do dataframe
+tail(dados_covid_clean)
+```
+
+```{r}
+# Eliminando as colunas de indice
+dados_covid_clean$x1 <- NULL
+dados_covid_clean$unnamed_0 <- NULL
+
+dados_covid_clean |> glimpse()
+```
+
+```{r}
+# Renomeando colunas 
+dados_covid_clean <-rename(dados_covid_clean, data_atendimento = data_de_atendimento_no_servico)
+dados_covid_clean <-rename(dados_covid_clean, municipio_residencia = municipio_de_residencia)
+dados_covid_clean <-rename(dados_covid_clean, classificacao_doenca =   classificacao_confirmado_suspeito_descartado_obito_curado)
+dados_covid_clean <-rename(dados_covid_clean, situacao_paciente =   situacao_do_paciente_confirmado_uti_isolamento_domiciliar_enfermaria)
+dados_covid_clean <-rename(dados_covid_clean, data_obito = data_do_obito_caso_haja)
+dados_covid_clean <-rename(dados_covid_clean, data_confirmacao = data_de_confirmacao)
+```
+
+```{r}
+# Convertendo os dados
+dados_covid_clean <- mutate(dados_covid_clean, data_atendimento = as.Date(data_atendimento))
+dados_covid_clean <- mutate(dados_covid_clean, sexo = as.factor(tolower(sexo)))
+dados_covid_clean <- mutate(dados_covid_clean, municipio_residencia = as.factor(tolower(municipio_residencia)))
+dados_covid_clean <- mutate(dados_covid_clean, classificacao_doenca = as.factor(tolower(classificacao_doenca)))
+dados_covid_clean <- mutate(dados_covid_clean, comorbidades = as.factor(tolower(comorbidades)))
+dados_covid_clean <- mutate(dados_covid_clean, situacao_paciente = as.factor(tolower(situacao_paciente)))
+```
+
+```{r}
+# Analisando os dados do dataframe
+skim(dados_covid_clean)
+```
+
+
+```{r}
+# TRATANDO OS DADOS FALTANTES
+
+# Tratando os dados faltantes da coluna data_obito - Eliminação
+dados_covid_clean$data_obito <- NULL
+
+# Tratando os dados faltantes da coluna comorbidades - Imputação
+dados_covid_clean$comorbidades[is.na(dados_covid_clean$comorbidades)] <- "sem comorbidade"
+
+# Tratando os dados faltantes da coluna idade - Eliminação
+dados_covid_clean <- na.omit(dados_covid_clean)
+
+# Analisando os dados do datafrema após resolver dados faltantes
+skim(dados_covid_clean)
+dados_covid_clean
+```
+
+#CARACTERIZAÇÃO DOS DADOS
+```{r}
+# Quantidade de casos por data de atendimento
+rsm_1 <- dados_covid_clean |> 
+          group_by(data_atendimento) |>
+          summarise(quantos = n()) |>
+          arrange(desc(quantos))       
+rsm_1
+```
+
+```{r}
+# Quantidade de casos por idade do paciente
+rsm_2 <- dados_covid_clean |> 
+          group_by(idade) |>
+          summarise(quantos = n()) |>
+          arrange(desc(quantos))       
+rsm_2
+```
+
+```{r}
+# Quantidade de casos por sexo do paciente
+rsm_3 <- dados_covid_clean |> 
+          group_by(sexo) |>
+          summarise(quantos = n()) |>
+          arrange(desc(quantos))       
+rsm_3
+```
+
+```{r}
+# Quantidade de casos por municiopio de residencia do paciente
+rsm_4 <- dados_covid_clean |> 
+          group_by(municipio_residencia) |>
+          summarise(quantos = n()) |>
+          arrange(desc(quantos))       
+rsm_4
+```
+
+```{r}
+# Quantidade de casos por comorbidades do paciente
+rsm_5 <- dados_covid_clean |> 
+          group_by(comorbidades) |>
+          summarise(quantos = n()) |>
+          arrange(desc(quantos))       
+rsm_5
+```
+
+```{r}
+# Quantidade de casos por situação do paciente
+rsm_6 <- dados_covid_clean |> 
+          group_by(situacao_paciente) |>
+          summarise(quantos = n()) |>
+          arrange(desc(quantos))       
+rsm_6
+```
+
+```{r}
+# Boxplot relacionando as idades com cada uma das situações do paciente
+box_idade_situacao <- ggplot(dados_covid_clean, aes(idade, situacao_paciente)) + geom_boxplot()
+box_idade_situacao
+```
+
+
+
+```{r}
+# Gráfico relacionando a data de atendimento com o sexo do paciente
+figura_3 <- ggplot(dados_covid_clean)
+figura_3 <- figura_3 + geom_histogram(aes(idade, fill = situacao_paciente))
+figura_3
+```
+
+# CRIAÇÃO DO MODELO DE PREDIÇÃO
+```{r}
+# Aplicando a Random Forest no dataframe
+library(tidymodels)
+
+# Preparação dos dados
+prep_split <- initial_split(dados_covid_clean)
+treino <- training(prep_split)
+teste <- testing(prep_split)
+
+# Receita
+receita <- recipe(situacao_paciente ~ ., dados_covid_clean) |> step_normalize()
+
+# Modelo
+modelo <- rand_forest(trees = 1000, 
+                      mtry = tune(),
+                      min_n = tune()) |>
+                      set_mode("classification") |>
+                      set_engine("ranger")
+
+# Workflow
+wf <- workflow() |> add_model(modelo) |> add_recipe(receita)
+
+
+# Reamostragem - validação cruzada
+reamostragens <- vfold_cv(treino, v = 10)  
+
+# Grid de Hiperparâmetros
+grade <- expand.grid(
+  mtry = c(1, 2, 3, 5),
+  min_n = 2^c(2, 4, 6)
+)
+
+# Tunagem
+tunagem <- tune_grid(
+  wf,
+  resamples = reamostragens,
+  grid = grade,
+)
+
+# Atualização do workflow
+melhor_wf <- select_best(tunagem, metric = "accuracy")
+melhor_wf <- wf |> finalize_workflow(melhor_wf)
+
+# Ajuste Final 
+ajuste_final <- melhor_wf |> last_fit(prep_split)
+
+# Treinamento do Modelo final
+modelo_final <- fit(ajuste_final$.workflow[[1]], treino)
+
+# Predições
+predicoes <- predict(modelo_final, teste)
+predicoes <- mutate(predicoes, situacao_paciente = teste$situacao_paciente)
+predicoes |> metrics(situacao_paciente, .pred_class)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
