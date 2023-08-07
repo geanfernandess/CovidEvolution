@@ -2,12 +2,12 @@
 O repositório contém o código e a análise para a construção de um modelo que visa prever a evolução de pacientes acometidos pela Covid-19 no estado de Alagoas. O modelo é desenvolvido com base na linguagem R e abrange tanto a manipulação e visualização de dados quanto a construção de modelos de aprendizado de máquina.
 
 ### Bibliotecas
--- tidyverse
-- janitor
-- lubridate
-- skimr
-- ggplot2
-- tidymodels
+- tidyverse;
+- janitor;
+- lubridate;
+- skimr;
+- ggplot2;
+- tidymodels.
 
 
 ### Bases de Dados
