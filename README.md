@@ -4,7 +4,6 @@ O repositório contém o código e a análise para a construção de um modelo q
 
 ### Bibliotecas
 
-Certifique-se de ter as seguintes bibliotecas do R instaladas antes de executar o código:
 ```
 library(tidyverse)
 library(janitor)
