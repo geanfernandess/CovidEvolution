@@ -4,7 +4,7 @@ Notebook para análise e construção de um modelo de aprendizagem de máquina q
 ### Bibliotecas
 - tidyverse;
 - janitor;
-- lubridate;
+- lubridate; 
 - skimr;
 - ggplot2;
 - tidymodels.
