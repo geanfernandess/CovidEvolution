@@ -1,5 +1,5 @@
 ## Modelo de Predição da Evolução de Pacientes com Covid-19 em Alagoas
-Notebook para análise e construção de um modelo que visa prever a evolução de pacientes acometidos pela Covid-19 no estado de Alagoas. O modelo é desenvolvido com base na linguagem R e abrange tanto a manipulação e visualização de dados quanto a construção de modelos de aprendizado de máquina.
+Notebook para análise e construção de um modelo de aprendizagem de máquina que visa prever a evolução de pacientes acometidos pela Covid-19 no estado de Alagoas. O modelo é desenvolvido com base na linguagem R e abrange tanto a manipulação e visualização de dados quanto a construção de modelos de aprendizado de máquina.
 
 ### Bibliotecas
 - tidyverse;
